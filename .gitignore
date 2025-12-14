@@ -1,6 +1,6 @@
 __pycache__
 venv
-.env
+backend/.env
 *.db
 *.sqlite3
-ml_artifacts/
+backend/ml_artifacts/
