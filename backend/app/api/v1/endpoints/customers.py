@@ -1,16 +1,24 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlmodel import Session
+from sqlmodel import Session, select
 from app.db.session import get_session
-from app.models.customer import Customer, CustomerCreate, CustomerRead
+from app.models.customer import (
+    Customer,
+    CustomerCreate,
+    CustomerRead,
+    CustomerUpdateStatus
+)
 from app.services.ml_service import ml_service
 import pandas as pd
 import io
 
 router = APIRouter()
 
+# =====================================================
+# POST /predict → Single Prediction + Save DB
+# =====================================================
 @router.post("/predict", response_model=CustomerRead)
 def create_customer_prediction(
-    customer_in: CustomerCreate, 
+    customer_in: CustomerCreate,
     session: Session = Depends(get_session)
 ):
     """
@@ -18,104 +26,162 @@ def create_customer_prediction(
     2. Melakukan Prediksi (ML)
     3. Menyimpan data + hasil prediksi ke Database
     """
-    
-    # 1. Konversi ke Dictionary untuk ML Service
+
     customer_data = customer_in.dict()
-    
-    # 2. Panggil ML Service
-    prediction_result = ml_service.predict(customer_data)
-    
-    # 3. Buat Instance Customer (Gabungan data input + hasil prediksi)
+
+    prediction = ml_service.predict_and_explain(customer_data)
+
     customer_db = Customer.from_orm(customer_in)
-    
-    if prediction_result:
-        customer_db.prediction_score = prediction_result['score']
-        customer_db.prediction_label = prediction_result['label']
-        # Disini nanti bisa tambah shap_values jika mau
-    
-    # 4. Simpan ke Database
+
+    if prediction:
+        customer_db.prediction_score = prediction["score"]
+        customer_db.prediction_label = prediction["label"]
+        customer_db.shap_values_json = prediction["shap_json"]
+        customer_db.recommendation_script = prediction["script"]
+
     session.add(customer_db)
     session.commit()
     session.refresh(customer_db)
-    
+
     return customer_db
 
+
+# =====================================================
+# GET / → List Customers (Dashboard)
+# =====================================================
 @router.get("/", response_model=list[CustomerRead])
-def read_customers(offset: int = 0, limit: int = 100, session: Session = Depends(get_session)):
-    """
-    Melihat list nasabah yang sudah tersimpan (Dashboard View)
-    """
-    customers = session.query(Customer).offset(offset).limit(limit).all()
+def read_customers(
+    offset: int = 0,
+    limit: int = 100,
+    session: Session = Depends(get_session)
+):
+    statement = select(Customer).offset(offset).limit(limit)
+    customers = session.exec(statement).all()
     return customers
 
+
+# =====================================================
+# GET /{customer_id} → Detail Customer
+# =====================================================
+@router.get("/{customer_id}", response_model=CustomerRead)
+def read_customer_detail(
+    customer_id: int,
+    session: Session = Depends(get_session)
+):
+    """
+    Detail nasabah:
+    - skor
+    - label
+    - SHAP
+    - recommendation script
+    - status sales
+    """
+    customer = session.get(Customer, customer_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+
+# =====================================================
+# PATCH /{customer_id}/status → Sales Action
+# =====================================================
+@router.patch("/{customer_id}/status", response_model=CustomerRead)
+def update_customer_status(
+    customer_id: int,
+    status_update: CustomerUpdateStatus,
+    session: Session = Depends(get_session)
+):
+    """
+    Sales update status lead:
+    NEW → CONTACTED → CLOSED
+    """
+    customer = session.get(Customer, customer_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    customer.lead_status = status_update.lead_status
+
+    if status_update.sales_notes:
+        customer.sales_notes = status_update.sales_notes
+
+    session.add(customer)
+    session.commit()
+    session.refresh(customer)
+
+    return customer
+
+
+# =====================================================
+# POST /upload → Batch CSV Prediction (SHAP + Script)
+# =====================================================
 @router.post("/upload", response_model=dict)
 async def upload_customers_csv(
     file: UploadFile = File(...),
     session: Session = Depends(get_session)
 ):
-    """
-    Fitur Unggulan RPL:
-    1. Upload CSV Data Nasabah (Batch)
-    2. Baca dengan Pandas
-    3. Loop setiap baris -> Prediksi dengan ML
-    4. Simpan ke Database secara bulk
-    """
-    
-    # 1. Validasi File
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="File harus berformat CSV")
     
     try:
-        # 2. Baca CSV ke Pandas DataFrame
         contents = await file.read()
-        # Asumsi delimiter pakai ';' sesuai dataset UCI, kalau error ganti ','
-        df = pd.read_csv(io.BytesIO(contents), sep=';') 
         
-        # Ubah nama kolom jika perlu (opsional, sesuaikan dengan nama field Pydantic/DB)
-        # Misalnya dataset asli pakai 'emp.var.rate', di DB kita pakai 'emp_var_rate'
-        df.columns = df.columns.str.replace('.', '_')
+        # --- PERBAIKAN 1: Auto-Detect Separator ---
+        # Coba baca 1 baris pertama decode ke string
+        first_line = contents.decode("utf-8").split('\n')[0]
+        separator = ';' if ';' in first_line else ','
+        
+        print(f"🔍 Terdeteksi separator: '{separator}'") # Debugging log
+        
+        df = pd.read_csv(io.BytesIO(contents), sep=separator)
+        
+        # --- PERBAIKAN 2: Normalisasi Nama Kolom ---
+        # Ganti literal '.' jadi '_' (escape dot), lalu lowercase
+        df.columns = df.columns.str.replace(r"\.", "_", regex=True)
+         # Paksa huruf kecil semua (Age -> age)
+        df.columns = df.columns.str.lower()
         
         customers_to_add = []
-        results_summary = {"total": 0, "potential": 0}
+        errors = [] # Simpan error biar ketahuan
 
-        # 3. Iterasi Data
         for index, row in df.iterrows():
-            # Convert row ke dict
             customer_data = row.to_dict()
             
-            # Bersihkan data (handle NaN dll jika ada)
-            # ...
-            
-            # Lakukan Prediksi
-            prediction = ml_service.predict(customer_data)
-            
-            # Buat Object Customer DB
-            # Kita pakai try-except agar jika ada 1 data error, tidak membatalkan semua
             try:
+                # Lakukan Prediksi
+                prediction = ml_service.predict_and_explain(customer_data)
+                
+                # Buat Object Customer DB
+                # Pydantic akan validasi tipe data disini
                 customer_db = Customer(**customer_data)
                 
                 if prediction:
                     customer_db.prediction_score = prediction['score']
                     customer_db.prediction_label = prediction['label']
+                    customer_db.shap_values_json = prediction['shap_json']
+                    customer_db.recommendation_script = prediction['script']
                     
-                    if prediction['label'] == 'Potential':
-                        results_summary['potential'] += 1
-                
                 customers_to_add.append(customer_db)
+                
             except Exception as e:
-                print(f"Skipping row {index}: {e}")
+                error_msg = f"Row {index} Error: {str(e)}"
+                print(error_msg) # Print ke terminal
+                errors.append(error_msg)
                 continue
 
-        # 4. Simpan ke Database (Batch Insert)
-        session.add_all(customers_to_add)
-        session.commit()
+        if customers_to_add:
+            session.add_all(customers_to_add)
+            session.commit()
         
-        results_summary['total'] = len(customers_to_add)
-        
+        # --- PERBAIKAN 3: Response Jujur ---
         return {
-            "message": "Batch upload processed successfully",
-            "summary": results_summary
+            "message": "Batch upload processed",
+            "summary": {
+                "total_processed": len(customers_to_add),
+                "total_failed": len(errors),
+                "potential": sum(1 for c in customers_to_add if c.prediction_label == 'Potential'),
+                "sample_error": errors[0] if errors else None # Tampilkan 1 error ke API response
+            }
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Fatal Error: {str(e)}")
