@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pandas
+numpy
+scikit-learn
+xgboost
+shap
+sqlmodel              # ORM Database yang modern (gabungan SQLAlchemy + Pydantic)
+python-multipart      # Untuk fitur upload file CSV
+python-dotenv         # Untuk load file .env
