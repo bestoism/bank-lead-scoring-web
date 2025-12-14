@@ -1,6 +1,6 @@
 __pycache__
 venv
 backend/.env
-*.db
+backend/smartconvert.db
 *.sqlite3
 backend/ml_artifacts/
