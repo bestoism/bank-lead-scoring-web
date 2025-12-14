@@ -114,7 +114,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 font-sans">
+    <div className="flex h-screen bg-gray-100 font-sans">
       
       {/* --- SIDEBAR --- */}
       <aside className="w-64 bg-[#1e293b] h-full text-white flex flex-col hidden md:flex">
