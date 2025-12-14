@@ -24,3 +24,19 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+button,
+a,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+.clickable {
+  cursor: pointer;
+}
+
+/* disabled elements should show not-allowed */
+button:disabled,
+[aria-disabled="true"],
+.disabled {
+  cursor: not-allowed;
+}
