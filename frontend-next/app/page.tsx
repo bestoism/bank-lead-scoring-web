@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Aside from "./components/Aside";
 
 interface Customer {
   id: number;
@@ -117,7 +118,7 @@ export default function DashboardPage() {
     <div className="flex h-screen bg-gray-100 font-sans">
       
       {/* --- SIDEBAR --- */}
-      <aside className="w-64 bg-[#1e293b] h-full text-white flex flex-col hidden md:flex">
+      {/* <aside className="w-64 bg-[#1e293b] h-full text-white flex flex-col hidden md:flex">
         <div className="p-6">
           <h2 className="text-xl font-bold tracking-wider text-green-400">SMART<span className="text-white">CONVERT</span></h2>
           <p className="text-xs text-gray-400 mt-1">Predictive Lead Scoring</p>
@@ -140,8 +141,8 @@ export default function DashboardPage() {
             <span>🚪</span> Sign Out
           </button>
         </div>
-      </aside>
-
+      </aside> */}
+      <Aside />
       {/* --- MAIN CONTENT --- */}
       <main className="flex-1 flex flex-col overflow-hidden">
         

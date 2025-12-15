@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import Aside from "../components/Aside";
 
 // --- tambahkan interface User ---
 interface User {
@@ -176,34 +177,7 @@ export default function ProfilePage() {
         : "flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg text-sm font-medium transition";
 
     return (
-      <aside className="w-64 bg-[#1e293b] text-white flex flex-col hidden md:flex">
-        <div className="p-6">
-          <h2 className="text-xl font-bold tracking-wider text-green-400">
-            SMART<span className="text-white">CONVERT</span>
-          </h2>
-          <p className="text-xs text-gray-400 mt-1">Predictive Lead Scoring</p>
-        </div>
-
-        <nav className="flex-1 px-4 space-y-2 mt-4" role="navigation" aria-label="Main">
-          <Link href="/" className={linkClass(isActive("/"))}>
-            <span>📊</span> Leads Data
-          </Link>
-
-          <Link href="/analytics" className={linkClass(isActive("/analytics"))}>
-            <span>📈</span> Analytics
-          </Link>
-
-          <Link href="/profile" className={linkClass(isActive("/profile"))}>
-            <span>👤</span> My Profile
-          </Link>
-        </nav>
-
-        <div className="p-4 border-t border-gray-700">
-          <button onClick={handleSignOut} className="flex items-center gap-2 text-red-400 hover:text-red-300 text-sm font-medium w-full px-4 py-2">
-            <span>🚪</span> Sign Out
-          </button>
-        </div>
-      </aside>
+      <p>jsahfksa</p>
     );
   };
 
@@ -275,9 +249,12 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen  bg-gray-50 font-sans">
-      <div className="flex min-h-screen">
-        <Sidebar />
+    <div className="min-h-screen h-full bg-gray-50 font-sans">
+      <div className="flex  h-full">
+        <div className="min-h-screen">
+      <Aside />
+        </div>
+
         <main className="flex-1 overflow-y-auto">
           {/* Topbar for small screens */}
           <div className="lg:hidden bg-white border-b p-4 flex items-center justify-between">

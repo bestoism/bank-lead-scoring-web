@@ -6,6 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
+import Aside from "../components/Aside";
 
 interface Customer {
   id: number;
@@ -110,31 +111,7 @@ export default function AnalyticsPage() {
   return (
     <div className="flex h-screen bg-gray-50 font-sans">
        {/* --- SIDEBAR SAMA SEPERTI DASHBOARD --- */}
-       <aside className="w-64 bg-[#1e293b] text-white flex flex-col hidden md:flex">
-        <div className="p-6">
-          <h2 className="text-xl font-bold tracking-wider text-green-400">SMART<span className="text-white">CONVERT</span></h2>
-          <p className="text-xs text-gray-400 mt-1">Analytics View</p>
-        </div>
-        <nav className="flex-1 px-4 space-y-2 mt-4">
-          <Link href="/" className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg text-sm font-medium transition">
-            <span>📊</span> Leads Data
-          </Link>
-
-          <Link href="/analytics" className="flex items-center gap-3 px-4 py-3 bg-green-600 rounded-lg text-sm font-medium shadow-lg shadow-green-900/20">
-            <span>📈</span> Analytics
-          </Link>
-
-          <Link href="/profile" className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg text-sm font-medium transition">
-            <span>👤</span> My Profile
-          </Link>
-        </nav>
-
-        <div className="p-4 border-t border-gray-700">
-          <button className="flex items-center gap-2 text-red-400 hover:text-red-300 text-sm font-medium w-full px-4 py-2">
-            <span>🚪</span> Sign Out
-          </button>
-        </div>
-      </aside>
+      <Aside  />      
 
       <main className="flex-1 overflow-y-auto p-8">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Campaign Performance Analytics</h1>
